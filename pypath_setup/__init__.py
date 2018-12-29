@@ -18,7 +18,7 @@ def run() -> int:
 
     # Setting up the launcher's ArgumentParser
     parser = argparse.ArgumentParser(
-        prog='bgez.launcher')
+        prog='pypath-setup')
     parser.add_argument('--dry-run', dest='dryrun', action='store_true',
         help='only show debug information')
     parser.add_argument('--debug', action='store_true',
