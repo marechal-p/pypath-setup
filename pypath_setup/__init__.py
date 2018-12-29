@@ -13,6 +13,10 @@ def run() -> int:
     import argparse
     import sys
 
+    PYTHONPATH = 'PYTHONPATH'
+    VIRTUAL_ENV = 'VIRTUAL_ENV'
+    PYPATH_SETUP_EXECUTABLE = 'PYPATH_SETUP_EXECUTABLE'
+
     # Copying the environment variables
     env = os.environ.copy()
 
@@ -25,6 +29,8 @@ def run() -> int:
         help='display debug messages')
     parser.add_argument('--venv', type=str,
         help='set the virtualenv to use')
+    parser.add_argument('--override', action='store_true',
+        help='completely override PYTHONPATH')
     parser.add_argument('executable', type=str,
         help='path to blenderplayer to use')
     options, arguments = parser.parse_known_args()
@@ -34,27 +40,48 @@ def run() -> int:
             print('[ PID:', os.getpid(), ']', *args, **kargs)
 
     # Check if we are running in a virtualenv
-    virtualenv = env.get('VIRTUAL_ENV', None)
+    virtualenv = env.get(VIRTUAL_ENV, None)
+
+    # Use specified parameter
     if not virtualenv:
         virtualenv = options.venv
 
-        if not virtualenv:
-            if os.path.isdir('.venv'):
-                debug('Found local virtualenv .venv folder')
-                virtualenv = '.venv'
+    # Use default `.venv` location
+    if not virtualenv:
+        if os.path.isdir('.venv'):
+            debug('Found local virtualenv .venv folder')
+            virtualenv = '.venv'
 
-        if not virtualenv:
-            raise ValueError('--venv must be specified if not in a virtualenv')
+    # Nothing was found
+    if not virtualenv:
+        raise ValueError('--venv must be specified if not in a virtualenv')
 
-        return subprocess.call(
-            [get_python_executable(virtualenv), *sys.argv],
-            env={ **env, 'VIRTUAL_ENV': virtualenv })
+    # Get python executable in the virtualenv
+    python_executable = get_python_executable(virtualenv)
 
-    # Update PYTHONPATH
-    pypath = ' '.join(sys.path)
-    debug('PYTHONPATH: "%s"' % pypath)
+    # Relaunch current process in the virtualenv if needed
+    if not os.path.samefile(python_executable, sys.executable):
+        if PYPATH_SETUP_EXECUTABLE not in env:
+            return subprocess.call(
+                [python_executable, *sys.argv],
+                env={ **env, VIRTUAL_ENV: virtualenv, PYPATH_SETUP_EXECUTABLE: python_executable })
+
+        else: # avoid fork-bomb
+            debug('Skipped forking')
+
+    # Fetch and update PYTHONPATH
+    if options.override:
+        path = sys.path
+    else:
+        path = env[PYTHONPATH].split(os.pathsep) \
+            if PYTHONPATH in env else []
+        path.extend(sys.path)
+
+    # Set environment with new PYTHONPATH
+    pythonpath = os.pathsep.join(path)
+    debug('PYTHONPATH: "%s"' % pythonpath)
     env.update({
-        'PYTHONPATH': pypath
+        PYTHONPATH: pythonpath
     })
 
     # Reconstructing the command the user wants to run in the patched environment
@@ -77,8 +104,7 @@ if platform.system() == 'Windows':
         return os.path.join(virtualenv, 'Scripts', 'python')
 
     def run_in_shell(command, env):
-        return subprocess.call(
-            command, shell=True, env=env)
+        return subprocess.call(command, shell=True, env=env)
 
 else:
 
@@ -91,8 +117,6 @@ else:
         '''
         shell = env.get('SHELL', None)
         if shell:
-            return subprocess.call(
-                [shell, '-i', '-c', command], env=env)
+            return subprocess.call([shell, '-i', '-c', command], env=env)
 
-        return subprocess.call(
-            command, shell=True, env=env)
+        return subprocess.call(command, shell=True, env=env)
