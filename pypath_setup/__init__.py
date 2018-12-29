@@ -74,7 +74,7 @@ def main():
 if platform.system() == 'Windows':
 
     def get_python_executable(virtualenv):
-        return os.path.join(virtualenv, 'Script', 'python')
+        return os.path.join(virtualenv, 'Scripts', 'python')
 
     def run_in_shell(command, env):
         return subprocess.call(
