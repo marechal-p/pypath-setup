@@ -4,7 +4,7 @@ build-backend = "poetry.masonry.api"
 
 [tool.poetry]
 name = "pypath-setup"
-version = "0.1.3"
+version = "0.1.4"
 description = "Start processes by setting PYTHONPATH to point to some virtualenv"
 authors = ["Paul Maréchal <marechap.info@gmail.com>"]
 

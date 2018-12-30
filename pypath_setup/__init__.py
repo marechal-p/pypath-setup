@@ -59,26 +59,17 @@ def run() -> int:
     # Get python executable in the virtualenv
     python_executable = get_python_executable(virtualenv)
 
-    # Relaunch current process in the virtualenv if needed
-    if not os.path.samefile(python_executable, sys.executable):
-        if PYPATH_SETUP_EXECUTABLE not in env:
-            return subprocess.call(
-                [python_executable, *sys.argv],
-                env={ **env, VIRTUAL_ENV: virtualenv, PYPATH_SETUP_EXECUTABLE: python_executable })
+    # Fetch PYTHONPATH from the `sys.path` of the Python executable inside the virtualenv
+    pythonpath = subprocess.check_output([python_executable, '-c', 'import os, sys; print(os.pathsep.join(sys.path), end="")'],
+        env={ **env, VIRTUAL_ENV: virtualenv }).decode()
 
-        else: # avoid fork-bomb
-            debug('Skipped forking')
-
-    # Fetch and update PYTHONPATH
+    # Construct PYTHONPATH
     if options.override:
-        path = sys.path
-    else:
-        path = env[PYTHONPATH].split(os.pathsep) \
-            if PYTHONPATH in env else []
-        path.extend(sys.path)
+        path = pythonpath
+    elif PYTHONPATH in env:
+        pythonpath = env[PYTHONPATH] + os.pathsep + pythonpath
 
-    # Set environment with new PYTHONPATH
-    pythonpath = os.pathsep.join(path)
+    # Update environment with new PYTHONPATH
     debug('PYTHONPATH: "%s"' % pythonpath)
     env.update({
         PYTHONPATH: pythonpath
