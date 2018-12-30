@@ -15,7 +15,6 @@ def run() -> int:
 
     PYTHONPATH = 'PYTHONPATH'
     VIRTUAL_ENV = 'VIRTUAL_ENV'
-    PYPATH_SETUP_EXECUTABLE = 'PYPATH_SETUP_EXECUTABLE'
 
     # Copying the environment variables
     env = os.environ.copy()
